@@ -3,141 +3,239 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Сокращатель ссылок</title>
+  <title>short — сократить ссылку</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* Общий стиль — такой же на странице статистики */
     :root {
-      --bg: #f4f1ea; --card: #fffdf8; --ink: #1d1b16; --muted: #6b665a;
-      --line: #ddd6c6; --accent: #d9481e; --accent-ink: #fff; --ok: #2f7a4b;
+      --bg: #ffffff; --soft: #f5f5f7; --line: #e8e8ed;
+      --ink: #1d1d1f; --muted: #6e6e73; --accent: #0071e3; --accent-hover: #0077ed;
+      --ok: #1d8a43; --danger: #d70015;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #16150f; --card: #1f1d16; --ink: #f0ebdd; --muted: #a39c8b;
-              --line: #37332a; --accent: #ff6a3d; --accent-ink: #16150f; --ok: #6fc28f; }
+      :root { --bg: #000; --soft: #1c1c1e; --line: #2c2c2e;
+              --ink: #f5f5f7; --muted: #8e8e93; --accent: #2997ff; --accent-hover: #47a6ff;
+              --ok: #30d158; --danger: #ff453a; }
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink);
-           font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-    main { max-width: 760px; margin: 0 auto; padding: 48px 16px; }
-    h1 { font-size: 40px; line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.02em; }
-    h1 span { color: var(--accent); }
-    .sub { color: var(--muted); margin: 0 0 32px; }
-    form { display: flex; gap: 8px; flex-wrap: wrap; }
-    input { flex: 1 1 320px; padding: 14px 16px; font: inherit; color: var(--ink);
-            background: var(--card); border: 2px solid var(--line); border-radius: 10px; }
-    input:focus { outline: none; border-color: var(--accent); }
-    button { padding: 14px 22px; font: inherit; font-weight: 600; cursor: pointer;
-             background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; }
-    button:disabled { opacity: .6; cursor: wait; }
-    .result { margin-top: 20px; padding: 16px; border-radius: 10px; background: var(--card);
-              border: 1px solid var(--line); display: none; }
-    .result.show { display: block; }
-    .result.error { border-color: var(--accent); color: var(--accent); }
-    .short { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .short a { font-size: 22px; font-weight: 700; color: var(--ok); word-break: break-all; }
-    .ghost { background: transparent; color: var(--ink); border: 1px solid var(--line);
-             padding: 6px 12px; font-weight: 500; }
-    .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
-    .meta a, td a { color: inherit; }
-    h2 { font-size: 18px; margin: 40px 0 12px; display: flex; justify-content: space-between; }
-    table { width: 100%; border-collapse: collapse; background: var(--card);
-            border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 14px; }
-    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
-    th { color: var(--muted); font-weight: 500; }
-    td.url { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    td code { font-weight: 700; }
-    .del { background: transparent; color: var(--accent); padding: 4px 8px; font-weight: 500; }
-    .empty { color: var(--muted); text-align: center; padding: 24px; }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--bg); color: var(--ink);
+           font: 17px/1.47 Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+           -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+    /* Шапка */
+    header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 80%, transparent);
+             backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+             border-bottom: 1px solid var(--line); }
+    .bar { max-width: 980px; margin: 0 auto; padding: 0 16px; height: 52px;
+           display: flex; align-items: center; justify-content: center; }
+    .tabs { display: flex; background: var(--soft); border-radius: 999px; padding: 3px; }
+    .tabs a { padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); }
+    .tabs a.active { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+    main { max-width: 680px; margin: 0 auto; padding: 0 16px 80px; }
+
+    /* Главный экран */
+    .hero { text-align: center; padding: 88px 0 40px; }
+    h1 { font-size: clamp(40px, 8vw, 64px); line-height: 1.05; font-weight: 700; letter-spacing: -0.035em; }
+    h1 .dim { color: var(--muted); }
+    .lead { margin-top: 16px; font-size: 21px; color: var(--muted); }
+
+    form { display: flex; gap: 10px; margin-top: 8px; }
+    input { flex: 1; min-width: 0; height: 56px; padding: 0 22px; font: inherit; color: var(--ink);
+            background: var(--soft); border: 2px solid transparent; border-radius: 999px; outline: none;
+            transition: border-color .2s, background .2s; }
+    input:focus { border-color: var(--accent); background: var(--bg); }
+    input::placeholder { color: var(--muted); }
+    .btn { display: inline-flex; align-items: center; justify-content: center;
+           height: 56px; padding: 0 28px; border-radius: 999px; font-weight: 600;
+           background: var(--accent); color: #fff; transition: background .2s, transform .1s; white-space: nowrap; }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .5; }
+    .btn.ghost { background: var(--bg); color: var(--ink); }
+    .btn.ghost:hover { background: var(--line); }
+    .error { margin-top: 14px; text-align: center; color: var(--danger); font-size: 15px; min-height: 22px; }
+
+    /* Результат */
+    .result { margin-top: 20px; padding: 36px 28px; text-align: center; background: var(--soft);
+              border-radius: 28px; animation: rise .35s ease-out; }
+    .result[hidden] { display: none; }
+    .result .label { font-size: 14px; color: var(--muted); }
+    .result .short { display: block; margin: 6px 0 4px; font-size: clamp(26px, 6vw, 40px); font-weight: 700;
+                     letter-spacing: -0.02em; color: var(--accent); word-break: break-all; }
+    .result .orig { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .actions { display: flex; gap: 10px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+    .actions .btn { height: 44px; padding: 0 22px; font-size: 15px; }
+    @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    /* Список ссылок */
+    h2 { margin: 72px 0 12px; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+    .list { border-top: 1px solid var(--line); }
+    .item { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+    .item a { flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 18px 4px; }
+    .item a:hover .code { color: var(--accent); }
+    .info { flex: 1; min-width: 0; }
+    .code { font-weight: 600; transition: color .2s; }
+    .url { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .clicks { text-align: right; font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .clicks b { display: block; font-size: 20px; font-weight: 600; color: var(--ink); line-height: 1.2; }
+    .chev { color: var(--muted); font-size: 22px; }
+    .del { width: 36px; height: 36px; border-radius: 50%; color: var(--muted); font-size: 20px; opacity: 0; transition: opacity .2s, background .2s; }
+    .item:hover .del, .del:focus { opacity: 1; }
+    .del:hover { background: var(--soft); color: var(--danger); }
+    @media (hover: none) { .del { opacity: 1; } }
+    .empty { padding: 40px 0; text-align: center; color: var(--muted); }
+
+    footer { margin-top: 48px; text-align: center; font-size: 12px; color: var(--muted); }
+
+    @media (max-width: 520px) {
+      .hero { padding-top: 56px; }
+      form { flex-direction: column; }
+      .tabs a { padding: 6px 12px; }
+    }
   </style>
 </head>
 <body>
+<header>
+  <div class="bar">
+    <nav class="tabs">
+      <a href="/" class="active">Сократить</a>
+      <a href="/stats/">Статистика</a>
+    </nav>
+  </div>
+</header>
+
 <main>
-  <h1>Сокра<span>ти</span> ссылку</h1>
-  <p class="sub">Вставь длинный адрес — получишь короткий.</p>
+  <section class="hero">
+    <h1>Длинная ссылка.<br><span class="dim">Короткая.</span></h1>
+    <p class="lead">Вставьте адрес и получите короткий.</p>
+  </section>
 
-  <form id="form">
-    <input id="url" type="text" placeholder="https://example.com/очень/длинная/ссылка" required>
-    <button id="btn" type="submit">Сократить</button>
+  <form id="form" autocomplete="off">
+    <input id="url" type="text" inputmode="url" placeholder="Вставьте ссылку" aria-label="Длинная ссылка" autofocus>
+    <button class="btn" id="btn" type="submit">Сократить</button>
   </form>
+  <p class="error" id="error"></p>
 
-  <div id="result" class="result"></div>
+  <section class="result" id="result" hidden>
+    <p class="label">Ваша короткая ссылка</p>
+    <a class="short" id="short" target="_blank"></a>
+    <p class="orig" id="orig"></p>
+    <div class="actions">
+      <button class="btn" id="copy" type="button">Копировать</button>
+      <a class="btn ghost" id="toStats" href="/stats/">Смотреть статистику →</a>
+    </div>
+  </section>
 
-  <h2>Все ссылки <span class="meta"><a href="/stats/">статистика</a> · <span id="servedBy"></span></span></h2>
-  <table>
-    <thead><tr><th>Код</th><th>Оригинал</th><th>Создана</th><th></th></tr></thead>
-    <tbody id="list"><tr><td colspan="4" class="empty">Загрузка…</td></tr></tbody>
-  </table>
+  <h2>Ваши ссылки</h2>
+  <div class="list" id="list"><p class="empty">Загрузка…</p></div>
+
+  <footer id="server"></footer>
 </main>
 
 <script>
-  const form = document.getElementById('form');
-  const input = document.getElementById('url');
-  const btn = document.getElementById('btn');
-  const result = document.getElementById('result');
-  const list = document.getElementById('list');
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const noProto = u => u.replace(/^https?:\/\//, '');
+  const plural = n => n % 10 === 1 && n % 100 !== 11 ? 'переход'
+    : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'перехода' : 'переходов';
 
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
+  // Ошибки валидации FastAPI приходят списком — берём понятный текст
+  const errorText = d => Array.isArray(d.detail)
+    ? d.detail.map(x => x.msg.replace(/^Value error, /, '')).join('. ')
+    : (d.detail || 'Что-то пошло не так');
 
-  // FastAPI возвращает ошибки валидации списком — достаём понятный текст
-  function errorText(data) {
-    if (Array.isArray(data.detail)) return data.detail.map(d => d.msg.replace(/^Value error, /, '')).join('; ');
-    return data.detail || 'Неизвестная ошибка';
-  }
-
-  form.addEventListener('submit', async (e) => {
+  $('form').addEventListener('submit', async e => {
     e.preventDefault();
-    btn.disabled = true;
+    let url = $('url').value.trim();
+    if (!url) return $('url').focus();
+    // apple.com → https://apple.com, чтобы не заставлять пользователя печатать протокол
+    if (!/^[a-z]+:\/\//i.test(url) && /^[^\s\/]+\.[^\s\/]+/.test(url)) url = 'https://' + url;
+    $('btn').disabled = true; $('error').textContent = '';
     try {
       const res = await fetch('/api/links', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({url: input.value})
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url})
       });
       const data = await res.json();
       if (!res.ok) throw new Error(errorText(data));
 
-      result.className = 'result show';
-      result.innerHTML = `
-        <div class="short">
-          <a href="${escapeHtml(data.short_url)}" target="_blank">${escapeHtml(data.short_url)}</a>
-          <button class="ghost" id="copy" type="button">Копировать</button>
-        </div>
-        <div class="meta">Ответила реплика: ${escapeHtml(data.served_by)} ·
-          <a href="/stats/?code=${encodeURIComponent(data.short_code)}">статистика переходов →</a></div>`;
-      document.getElementById('copy').onclick = () => navigator.clipboard.writeText(data.short_url);
-      input.value = '';
+      $('short').textContent = noProto(data.short_url);
+      $('short').href = data.short_url;
+      $('orig').textContent = data.original_url;
+      $('toStats').href = '/stats/?code=' + encodeURIComponent(data.short_code);
+      $('copy').onclick = () => copy(data.short_url);
+      $('result').hidden = false;
+      $('url').value = '';
+      showServer(data.served_by);
       loadLinks();
     } catch (err) {
-      result.className = 'result show error';
-      result.textContent = err.message;
+      $('error').textContent = err.message;
+      $('result').hidden = true;
     } finally {
-      btn.disabled = false;
+      $('btn').disabled = false;
     }
   });
+
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); } catch { return; }
+    $('copy').textContent = 'Скопировано ✓';
+    setTimeout(() => $('copy').textContent = 'Копировать', 1500);
+  }
+
+  function showServer(name) { $('server').textContent = 'Сервер ' + name; }
 
   async function loadLinks() {
     const res = await fetch('/api/links');
     const data = await res.json();
-    document.getElementById('servedBy').textContent = 'реплика: ' + data.served_by;
+    showServer(data.served_by);
+
+    // Количество переходов берём у сервиса статистики (модуль 2)
+    const clicks = {};
+    try {
+      const t = await (await fetch('/stats/api/top?n=100')).json();
+      t.links.forEach(l => clicks[l.code] = l.clicks);
+    } catch {}
+
     if (!data.links.length) {
-      list.innerHTML = '<tr><td colspan="4" class="empty">Пока нет ссылок</td></tr>';
+      $('list').innerHTML = '<p class="empty">Здесь появятся ваши ссылки.</p>';
       return;
     }
-    list.innerHTML = data.links.map(l => `
-      <tr>
-        <td><a href="/stats/?code=${encodeURIComponent(l.short_code)}" title="Статистика"><code>${escapeHtml(l.short_code)}</code></a></td>
-        <td class="url" title="${escapeHtml(l.original_url)}">${escapeHtml(l.original_url)}</td>
-        <td>${new Date(l.created_at).toLocaleString('ru-RU')}</td>
-        <td><button class="del" data-code="${escapeHtml(l.short_code)}">Удалить</button></td>
-      </tr>`).join('');
+    $('list').innerHTML = data.links.map(l => {
+      const n = clicks[l.short_code];
+      const count = n === undefined ? '' : `<div class="clicks"><b>${n}</b>${plural(n)}</div>`;
+      return `
+      <div class="item">
+        <a href="/stats/?code=${encodeURIComponent(l.short_code)}" title="Открыть статистику">
+          <div class="info">
+            <div class="code">${esc(noProto(l.short_url))}</div>
+            <div class="url">${esc(l.original_url)}</div>
+          </div>
+          ${count}
+          <span class="chev">›</span>
+        </a>
+        <button class="del" data-code="${esc(l.short_code)}" aria-label="Удалить" title="Удалить">×</button>
+      </div>`;
+    }).join('');
   }
 
-  list.addEventListener('click', async (e) => {
+  $('list').addEventListener('click', async e => {
     const code = e.target.dataset.code;
-    if (!code) return;
+    if (!code || !confirm('Удалить ссылку? Её статистика тоже удалится.')) return;
     await fetch('/api/links/' + encodeURIComponent(code), {method: 'DELETE'});
     loadLinks();
   });
+
+  // Счётчики переходов обновляются сами, когда кто-то переходит по ссылке
+  (function live() {
+    try {
+      const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/all');
+      ws.onmessage = () => loadLinks();
+      ws.onclose = () => setTimeout(live, 3000);
+    } catch {}
+  })();
 
   loadLinks();
 </script>
