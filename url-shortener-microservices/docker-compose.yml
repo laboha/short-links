@@ -1,0 +1,56 @@
+# Общий шаблон для реплик link-service, чтобы не повторять одно и то же 3 раза
+x-link-service: &link-service
+  build: ./link-service
+  environment:
+    DATABASE_URL: postgresql://shortener:shortener@db:5432/shortener
+    BASE_URL: http://localhost
+  depends_on:
+    db:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  # ===== Централизованная БД =====
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shortener
+      POSTGRES_PASSWORD: shortener
+      POSTGRES_DB: shortener
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shortener"]
+      interval: 3s
+      retries: 10
+
+  # ===== Модуль 1: три реплики link-service =====
+  link-service-1:
+    <<: *link-service
+    hostname: link-service-1
+  link-service-2:
+    <<: *link-service
+    hostname: link-service-2
+  link-service-3:
+    <<: *link-service
+    hostname: link-service-3
+
+  # ===== Модуль 2: redirect-service (добавит второй человек) =====
+  # redirect-service-1: ...
+  # redirect-service-2: ...
+
+  # ===== Балансировщик =====
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - link-service-1
+      - link-service-2
+      - link-service-3
+
+volumes:
+  pgdata:
