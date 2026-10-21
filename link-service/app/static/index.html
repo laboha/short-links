@@ -36,6 +36,7 @@
     .ghost { background: transparent; color: var(--ink); border: 1px solid var(--line);
              padding: 6px 12px; font-weight: 500; }
     .meta { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    .meta a, td a { color: inherit; }
     h2 { font-size: 18px; margin: 40px 0 12px; display: flex; justify-content: space-between; }
     table { width: 100%; border-collapse: collapse; background: var(--card);
             border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 14px; }
@@ -59,7 +60,7 @@
 
   <div id="result" class="result"></div>
 
-  <h2>Все ссылки <span class="meta" id="servedBy"></span></h2>
+  <h2>Все ссылки <span class="meta"><a href="/stats/">статистика</a> · <span id="servedBy"></span></span></h2>
   <table>
     <thead><tr><th>Код</th><th>Оригинал</th><th>Создана</th><th></th></tr></thead>
     <tbody id="list"><tr><td colspan="4" class="empty">Загрузка…</td></tr></tbody>
@@ -101,7 +102,8 @@
           <a href="${escapeHtml(data.short_url)}" target="_blank">${escapeHtml(data.short_url)}</a>
           <button class="ghost" id="copy" type="button">Копировать</button>
         </div>
-        <div class="meta">Ответила реплика: ${escapeHtml(data.served_by)}</div>`;
+        <div class="meta">Ответила реплика: ${escapeHtml(data.served_by)} ·
+          <a href="/stats/?code=${encodeURIComponent(data.short_code)}">статистика переходов →</a></div>`;
       document.getElementById('copy').onclick = () => navigator.clipboard.writeText(data.short_url);
       input.value = '';
       loadLinks();
@@ -123,7 +125,7 @@
     }
     list.innerHTML = data.links.map(l => `
       <tr>
-        <td><code>${escapeHtml(l.short_code)}</code></td>
+        <td><a href="/stats/?code=${encodeURIComponent(l.short_code)}" title="Статистика"><code>${escapeHtml(l.short_code)}</code></a></td>
         <td class="url" title="${escapeHtml(l.original_url)}">${escapeHtml(l.original_url)}</td>
         <td>${new Date(l.created_at).toLocaleString('ru-RU')}</td>
         <td><button class="del" data-code="${escapeHtml(l.short_code)}">Удалить</button></td>

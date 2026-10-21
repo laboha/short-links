@@ -32,7 +32,9 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U shortener"]
+      # -h 127.0.0.1: проверяем по TCP. Пока postgres выполняет init.sql, он слушает
+      # только локальный сокет, поэтому без -h сервисы стартовали бы раньше, чем созданы таблицы
+      test: ["CMD-SHELL", "pg_isready -U shortener -d shortener -h 127.0.0.1"]
       interval: 3s
       retries: 10
 

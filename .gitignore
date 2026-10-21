@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+# генерируется из proto при сборке образа
+redirect-service/app/stats_pb2.py
+redirect-service/app/stats_pb2_grpc.py

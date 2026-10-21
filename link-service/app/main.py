@@ -49,7 +49,8 @@ def get_conn():
 
 
 def ensure_table():
-    """Создаёт таблицу, если её ещё нет (на случай запуска без init.sql)."""
+    """Создаёт таблицу, если её ещё нет (на случай запуска без init.sql).
+    Структура должна совпадать с db/init.sql — redirect-service читает expires_at."""
     with get_conn() as conn:
         conn.execute(
             """
@@ -57,7 +58,8 @@ def ensure_table():
                 id           SERIAL PRIMARY KEY,
                 short_code   VARCHAR(16)  NOT NULL UNIQUE,
                 original_url TEXT         NOT NULL,
-                created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+                created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                expires_at   TIMESTAMPTZ  NULL
             )
             """
         )
