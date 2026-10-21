@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Статистика переходов</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --text:#e8eaed; --muted:#8b93a1; --accent:#4f8cff; --ok:#3ecf8e; --bad:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  .card { background:var(--card); border-radius:12px; padding:18px; margin-bottom:16px; }
+  form { display:flex; gap:8px; }
+  input { flex:1; padding:10px 12px; border-radius:8px; border:1px solid #2a2f3a; background:#0f1115; color:var(--text); font-size:16px; }
+  button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-size:16px; cursor:pointer; }
+  .counter { font-size: 96px; font-weight: 700; line-height: 1; transition: transform .15s, color .15s; }
+  .bump { transform: scale(1.12); color: var(--ok); }
+  .muted { color: var(--muted); font-size: 14px; }
+  .row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-end; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--bad); margin-right:6px; }
+  .dot.on { background: var(--ok); }
+  table { width:100%; border-collapse: collapse; font-size:14px; }
+  th, td { text-align:left; padding:6px 4px; border-bottom:1px solid #2a2f3a; }
+  td.url { max-width: 380px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #log { font-family: ui-monospace, monospace; font-size: 12px; max-height: 180px; overflow:auto; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Статистика переходов</h1>
+
+  <div class="card">
+    <form id="f">
+      <input id="code" placeholder="Короткий код, например aB3xK9" maxlength="6" required>
+      <button>Показать</button>
+    </form>
+  </div>
+
+  <div class="card" id="statsCard" hidden>
+    <div class="row">
+      <div>
+        <div class="muted">Переходов по <a id="shortLink" target="_blank"></a></div>
+        <div class="counter" id="counter">0</div>
+      </div>
+      <div class="muted">
+        <div>Оригинал: <span id="orig"></span></div>
+        <div>Последний переход: <span id="last">—</span></div>
+        <div><span class="dot" id="wsDot"></span>WebSocket: <span id="wsState">отключён</span></div>
+        <div>gRPC ответила реплика: <b id="grpcRep">—</b></div>
+      </div>
+    </div>
+    <h3>По дням</h3>
+    <table><thead><tr><th>День</th><th>Переходов</th></tr></thead><tbody id="days"></tbody></table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Топ ссылок <span class="muted">(gRPC GetTopLinks, обновляется при каждом переходе)</span></h3>
+    <table><thead><tr><th>Код</th><th>Оригинал</th><th>Переходов</th></tr></thead><tbody id="top"></tbody></table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">События</h3>
+    <div id="log"></div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const wsBase = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/";
+let ws = null, current = null;
+
+function logLine(text) {
+  const d = document.createElement("div");
+  d.textContent = new Date().toLocaleTimeString() + "  " + text;
+  $("log").prepend(d);
+}
+
+function setCounter(n) {
+  const c = $("counter");
+  c.textContent = n;
+  c.classList.add("bump");
+  setTimeout(() => c.classList.remove("bump"), 200);
+}
+
+async function loadStats(code) {
+  const r = await fetch("/stats/api/" + encodeURIComponent(code));
+  if (!r.ok) { alert("Ссылка " + code + " не найдена"); return false; }
+  const s = await r.json();
+  $("statsCard").hidden = false;
+  $("shortLink").textContent = location.host + "/" + s.code;
+  $("shortLink").href = "/" + s.code;
+  $("orig").textContent = s.original_url;
+  $("last").textContent = s.last_click ? new Date(s.last_click).toLocaleString() : "—";
+  $("grpcRep").textContent = s.grpc_replica;
+  $("counter").textContent = s.total_clicks;
+  $("days").innerHTML = s.by_day.map(d => `<tr><td>${d.day}</td><td>${d.clicks}</td></tr>`).join("")
+    || `<tr><td colspan="2" class="muted">Переходов пока нет</td></tr>`;
+  return true;
+}
+
+async function loadTop() {
+  const r = await fetch("/stats/api/top?n=10");
+  if (!r.ok) return;
+  const t = await r.json();
+  $("top").innerHTML = t.links.map(l =>
+    `<tr><td><a href="/stats/?code=${l.code}">${l.code}</a></td><td class="url">${l.original_url.replace(/</g,"&lt;")}</td><td>${l.clicks}</td></tr>`
+  ).join("") || `<tr><td colspan="3" class="muted">Ссылок пока нет</td></tr>`;
+}
+
+function connect(code) {
+  if (ws) ws.close();
+  ws = new WebSocket(wsBase + code);
+  ws.onopen = () => { $("wsDot").classList.add("on"); $("wsState").textContent = "подключён"; };
+  ws.onclose = () => {
+    $("wsDot").classList.remove("on"); $("wsState").textContent = "отключён, переподключение…";
+    if (current === code) setTimeout(() => connect(code), 2000);
+  };
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.type === "init") {
+      $("wsState").textContent = "подключён к " + m.ws_replica;
+      logLine(`WS подключён к реплике ${m.ws_replica}`);
+      return;
+    }
+    setCounter(m.total);
+    $("last").textContent = new Date(m.last_click).toLocaleString();
+    logLine(`клик ${m.code}: всего ${m.total} · редирект сделала ${m.redirect_replica} · WS отправила ${m.ws_replica}`);
+    loadStats(code); // обновить таблицу по дням
+    loadTop();
+  };
+}
+
+async function open(code) {
+  current = code;
+  history.replaceState(null, "", "/stats/?code=" + code);
+  if (await loadStats(code)) connect(code);
+}
+
+$("f").addEventListener("submit", (e) => { e.preventDefault(); open($("code").value.trim()); });
+
+// Подписка на все переходы — чтобы топ обновлялся даже без выбранного кода
+(function watchAll() {
+  const all = new WebSocket(wsBase + "all");
+  all.onmessage = () => { if (!current) loadTop(); };
+  all.onclose = () => setTimeout(watchAll, 3000);
+})();
+
+loadTop();
+const pre = new URLSearchParams(location.search).get("code");
+if (pre) { $("code").value = pre; open(pre); }
+setInterval(() => ws && ws.readyState === 1 && ws.send("ping"), 25000);
+</script>
+</body>
+</html>
