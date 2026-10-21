@@ -9,6 +9,17 @@ x-link-service: &link-service
       condition: service_healthy
   restart: unless-stopped
 
+# Общий шаблон для реплик redirect-service
+x-redirect-service: &redirect-service
+  build: ./redirect-service
+  environment:
+    DATABASE_URL: postgresql://shortener:shortener@db:5432/shortener
+    GRPC_TARGET: nginx:50051   # REST-шлюз /stats/api ходит в gRPC через балансировщик
+  depends_on:
+    db:
+      condition: service_healthy
+  restart: unless-stopped
+
 services:
   # ===== Централизованная БД =====
   db:
@@ -25,7 +36,7 @@ services:
       interval: 3s
       retries: 10
 
-  # ===== Модуль 1: три реплики link-service =====
+  # ===== Модуль 1: три реплики link-service (REST) =====
   link-service-1:
     <<: *link-service
     hostname: link-service-1
@@ -36,21 +47,33 @@ services:
     <<: *link-service
     hostname: link-service-3
 
-  # ===== Модуль 2: redirect-service (добавит второй человек) =====
-  # redirect-service-1: ...
-  # redirect-service-2: ...
+  # ===== Модуль 2: три реплики redirect-service (HTTP-редирект + gRPC + WebSocket) =====
+  redirect-service-1:
+    <<: *redirect-service
+    hostname: redirect-service-1
+  redirect-service-2:
+    <<: *redirect-service
+    hostname: redirect-service-2
+  redirect-service-3:
+    <<: *redirect-service
+    hostname: redirect-service-3
 
   # ===== Балансировщик =====
   nginx:
     image: nginx:1.27-alpine
     ports:
-      - "80:80"
+      - "80:80"         # HTTP + WebSocket
+      - "50051:50051"   # gRPC
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - link-service-1
       - link-service-2
       - link-service-3
+      - redirect-service-1
+      - redirect-service-2
+      - redirect-service-3
+    restart: unless-stopped
 
 volumes:
   pgdata:

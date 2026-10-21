@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package stats;
+
+// gRPC-сервис статистики переходов по коротким ссылкам
+service StatsService {
+  // Статистика по одной ссылке
+  rpc GetStats (StatsRequest) returns (StatsReply);
+  // N самых популярных ссылок
+  rpc GetTopLinks (TopRequest) returns (TopReply);
+}
+
+message StatsRequest {
+  string code = 1;               // короткий код, например "aB3xK9"
+}
+
+message DayCount {
+  string day = 1;                // дата в формате YYYY-MM-DD
+  int64 clicks = 2;              // переходов за этот день
+}
+
+message StatsReply {
+  string code = 1;
+  string original_url = 2;
+  int64 total_clicks = 3;        // всего переходов
+  string last_click = 4;         // ISO-8601, пусто если переходов не было
+  repeated DayCount by_day = 5;  // клики по дням
+  string replica = 6;            // какая реплика ответила
+}
+
+message TopRequest {
+  int32 n = 1;                   // сколько ссылок вернуть (по умолчанию 10)
+}
+
+message LinkStat {
+  string code = 1;
+  string original_url = 2;
+  int64 clicks = 3;
+}
+
+message TopReply {
+  repeated LinkStat links = 1;
+  string replica = 2;
+}
